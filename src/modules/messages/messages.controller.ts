@@ -56,6 +56,20 @@ export async function getMessageThread(
   }
 }
 
+export async function markConversationAsRead(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const user_id = String(req.params.user_id);
+    const result = await messagesService.markConversationAsRead(req.user!.id, user_id);
+    sendSuccess(res, result, 200, 'Conversation marked as read');
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function markAsRead(
   req: Request,
   res: Response,

@@ -132,6 +132,23 @@ export async function getIncomingPayments(
   }
 }
 
+export async function getEarnings(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (req.user!.role !== 'creator') {
+      throw new ForbiddenError('Only creators can view earnings');
+    }
+
+    const earnings = await paymentsService.getCreatorEarnings(req.user!.id);
+    sendSuccess(res, earnings);
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * Mock checkout handler — simulates a payment gateway redirect.
  * TODO [Solana]: Remove this entirely when Solana Pay is integrated.

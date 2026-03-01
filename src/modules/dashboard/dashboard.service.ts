@@ -55,6 +55,102 @@ export interface AudienceDashboard {
   }>;
 }
 
+export async function getConnectionsCount(userId: string, role: 'creator' | 'audience'): Promise<{ count: number }> {
+  let countResult;
+
+  if (role === 'creator') {
+    countResult = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${payments.audience_id})` })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.creator_id, userId),
+          eq(payments.payment_status, 'completed'),
+        ),
+      );
+  } else {
+    countResult = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${payments.creator_id})` })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.audience_id, userId),
+          eq(payments.payment_status, 'completed'),
+        ),
+      );
+  }
+
+  return { count: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getConnections(userId: string, role: 'creator' | 'audience') {
+  let connectedUserIds: string[] = [];
+
+  if (role === 'creator') {
+    const results = await db
+      .select({ audience_id: payments.audience_id })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.creator_id, userId),
+          eq(payments.payment_status, 'completed')
+        )
+      );
+    connectedUserIds = [...new Set(results.map(r => r.audience_id))];
+  } else {
+    const results = await db
+      .select({ creator_id: payments.creator_id })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.audience_id, userId),
+          eq(payments.payment_status, 'completed')
+        )
+      );
+    connectedUserIds = [...new Set(results.map(r => r.creator_id))];
+  }
+
+  if (connectedUserIds.length === 0) {
+    return [];
+  }
+
+  const connectedUsers = await Promise.all(
+    connectedUserIds.map(async (id) => {
+      const [u] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          display_name: users.display_name,
+          profile_image_url: users.profile_image_url,
+          role: users.role,
+        })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+        
+      if (!u) return null;
+
+      const unreadCountResult = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.sender_id, id),
+            eq(messages.receiver_id, userId),
+            eq(messages.is_read, false)
+          )
+        );
+
+      return {
+        ...u,
+        unread_count: Number(unreadCountResult[0]?.count ?? 0)
+      };
+    })
+  );
+
+  return connectedUsers.filter(Boolean);
+}
+
 export async function getCreatorDashboard(creatorId: string): Promise<CreatorDashboard> {
   // Total earnings from completed payments (in lamports)
   const earningsResult = await db

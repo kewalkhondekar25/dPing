@@ -21,4 +21,18 @@ router.get(
   dashboardController.getAudienceDashboard,
 );
 
+// GET /api/v1/dashboard/connections/count — authenticated
+router.get(
+  '/connections/count',
+  authenticate,
+  dashboardController.getConnectionsCount,
+);
+
+// GET /api/v1/dashboard/connections — authenticated
+router.get(
+  '/connections',
+  authenticate,
+  dashboardController.getConnections,
+);
+
 export default router;

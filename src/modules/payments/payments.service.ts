@@ -1,4 +1,4 @@
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { payments, Payment, NewPayment } from '../../db/schema/payments';
 import { users } from '../../db/schema/users';
@@ -222,11 +222,16 @@ export async function confirmPayment(
 }
 
 export async function getAudiencePayments(audienceId: string): Promise<Payment[]> {
-  return db
+  const results = await db
     .select()
     .from(payments)
     .where(eq(payments.audience_id, audienceId))
     .orderBy(desc(payments.created_at));
+    
+  return results.map((p) => ({
+    ...p,
+    amount_lamports: String(p.amount_lamports),
+  })) as any;
 }
 
 export async function getCreatorIncomingPayments(creatorId: string): Promise<
@@ -250,7 +255,27 @@ export async function getCreatorIncomingPayments(creatorId: string): Promise<
     .where(eq(payments.creator_id, creatorId))
     .orderBy(desc(payments.created_at));
 
-  return results.map(({ payment, audience }) => ({ ...payment, audience }));
+  // BigInt must be converted to string for JSON serialization
+  return results.map(({ payment, audience }) => ({
+    ...payment,
+    amount_lamports: String(payment.amount_lamports),
+    audience,
+  })) as any;
+}
+
+export async function getCreatorEarnings(creatorId: string): Promise<{ total_earnings_lamports: string }> {
+  const earningsResult = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${payments.amount_lamports}::numeric), 0)::text`,
+    })
+    .from(payments)
+    .where(
+      and(eq(payments.creator_id, creatorId), eq(payments.payment_status, 'completed')),
+    );
+
+  return {
+    total_earnings_lamports: earningsResult[0]?.total ?? '0',
+  };
 }
 
 /**
