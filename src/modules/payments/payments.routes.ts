@@ -19,6 +19,9 @@ router.get('/my-payments', authenticate, paymentsController.getMyPayments);
 // GET /api/v1/payments/incoming — creator only
 router.get('/incoming', authenticate, paymentsController.getIncomingPayments);
 
+// GET /api/v1/payments/earnings — creator only
+router.get('/earnings', authenticate, paymentsController.getEarnings);
+
 // GET /api/v1/payments/mock-checkout/:payment_id — public (simulates payment gateway)
 // TODO [Solana]: Remove this route when Solana Pay is integrated
 router.get('/mock-checkout/:payment_id', paymentsController.mockCheckout);

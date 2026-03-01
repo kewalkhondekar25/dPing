@@ -13,6 +13,9 @@ router.get('/conversations', authenticate, messagesController.getConversations);
 // GET /api/v1/messages/conversations/:user_id — authenticated
 router.get('/conversations/:user_id', authenticate, messagesController.getMessageThread);
 
+// PATCH /api/v1/messages/conversations/:user_id/read — authenticated
+router.patch('/conversations/:user_id/read', authenticate, messagesController.markConversationAsRead);
+
 // PATCH /api/v1/messages/:message_id/read — authenticated
 router.patch('/:message_id/read', authenticate, messagesController.markAsRead);
 

@@ -27,3 +27,29 @@ export async function getAudienceDashboard(
     next(err);
   }
 }
+
+export async function getConnectionsCount(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = await dashboardService.getConnectionsCount(req.user!.id, req.user!.role);
+    sendSuccess(res, data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getConnections(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = await dashboardService.getConnections(req.user!.id, req.user!.role);
+    sendSuccess(res, data);
+  } catch (err) {
+    next(err);
+  }
+}

@@ -179,6 +179,26 @@ export async function getMessageThread(
     .orderBy(messages.created_at);
 }
 
+export async function markConversationAsRead(
+  userId: string,
+  otherUserId: string,
+): Promise<{ count: number }> {
+  // Update all messages where sender is otherUserId and receiver is userId, that are unread
+  const result = await db
+    .update(messages)
+    .set({ is_read: true })
+    .where(
+      and(
+        eq(messages.sender_id, otherUserId),
+        eq(messages.receiver_id, userId),
+        eq(messages.is_read, false)
+      )
+    )
+    .returning({ id: messages.id });
+
+  return { count: result.length };
+}
+
 export async function markMessageAsRead(
   messageId: string,
   userId: string,
