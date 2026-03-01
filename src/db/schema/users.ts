@@ -2,11 +2,12 @@ import {
   pgTable,
   uuid,
   text,
-  decimal,
+  bigint,
   boolean,
   timestamp,
   pgEnum,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const userRoleEnum = pgEnum('user_role', ['creator', 'audience']);
 
@@ -23,8 +24,8 @@ export const users = pgTable('users', {
   // TODO [Solana]: Accept wallet_address during registration for Solana Pay
   wallet_address: text('wallet_address'),
 
-  // TODO [Solana]: Use USDC/SOL amount instead of USD for dm_price
-  dm_price_usd: decimal('dm_price_usd', { precision: 10, scale: 2 }).default('5.00').notNull(),
+  // DM price in Solana lamports (1 SOL = 1_000_000_000 lamports)
+  dm_price_lamports: bigint('dm_price_lamports', { mode: 'bigint' }).default(sql`5000000000`).notNull(),
 
   is_active: boolean('is_active').default(true).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

@@ -4,6 +4,9 @@ import * as paymentsController from './payments.controller';
 
 const router = Router();
 
+// POST /api/v1/payments/record — audience only
+router.post('/record', authenticate, paymentsController.recordPayment);
+
 // POST /api/v1/payments/initiate — audience only
 router.post('/initiate', authenticate, paymentsController.initiatePayment);
 
