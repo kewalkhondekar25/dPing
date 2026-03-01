@@ -5,7 +5,7 @@ import { messages } from '../../db/schema/messages';
 import { users } from '../../db/schema/users';
 
 export interface CreatorDashboard {
-  total_earnings_usd: string;
+  total_earnings_lamports: string;
   total_priority_dms: number;
   unread_message_count: number;
   recent_paying_audience: Array<{
@@ -14,7 +14,7 @@ export interface CreatorDashboard {
     display_name: string | null;
     profile_image_url: string | null;
     paid_at: Date | null;
-    amount_usd: string;
+    amount_lamports: string;
     last_message_preview: string | null;
     has_replied: boolean;
   }>;
@@ -24,7 +24,7 @@ export interface CreatorDashboard {
     username: string;
     display_name: string | null;
     paid_at: Date | null;
-    amount_usd: string;
+    amount_lamports: string;
   }>;
 }
 
@@ -34,13 +34,13 @@ export interface AudienceDashboard {
     username: string;
     display_name: string | null;
     profile_image_url: string | null;
-    dm_price_usd: string;
+    dm_price_lamports: string;
   }>;
   payment_history: Array<{
     payment_id: string;
     creator_id: string;
     creator_username: string;
-    amount_usd: string;
+    amount_lamports: string;
     payment_status: string;
     paid_at: Date | null;
     message_unlocked: boolean;
@@ -56,17 +56,17 @@ export interface AudienceDashboard {
 }
 
 export async function getCreatorDashboard(creatorId: string): Promise<CreatorDashboard> {
-  // Total earnings from completed payments
+  // Total earnings from completed payments (in lamports)
   const earningsResult = await db
     .select({
-      total: sql<string>`COALESCE(SUM(${payments.amount_usd}), 0)::text`,
+      total: sql<string>`COALESCE(SUM(${payments.amount_lamports}::numeric), 0)::text`,
     })
     .from(payments)
     .where(
       and(eq(payments.creator_id, creatorId), eq(payments.payment_status, 'completed')),
     );
 
-  const total_earnings_usd = earningsResult[0]?.total ?? '0';
+  const total_earnings_lamports = earningsResult[0]?.total ?? '0';
 
   // Total priority DMs received
   const dmCountResult = await db
@@ -89,7 +89,7 @@ export async function getCreatorDashboard(creatorId: string): Promise<CreatorDas
     .select({
       payment_id: payments.id,
       audience_id: payments.audience_id,
-      amount_usd: payments.amount_usd,
+      amount_lamports: payments.amount_lamports,
       paid_at: payments.paid_at,
     })
     .from(payments)
@@ -142,7 +142,7 @@ export async function getCreatorDashboard(creatorId: string): Promise<CreatorDas
         display_name: audienceUser?.display_name ?? null,
         profile_image_url: audienceUser?.profile_image_url ?? null,
         paid_at: p.paid_at,
-        amount_usd: p.amount_usd,
+        amount_lamports: String(p.amount_lamports),
         last_message_preview: lastMsg?.content
           ? lastMsg.content.substring(0, 100)
           : null,
@@ -160,11 +160,11 @@ export async function getCreatorDashboard(creatorId: string): Promise<CreatorDas
       username: a.username,
       display_name: a.display_name,
       paid_at: a.paid_at,
-      amount_usd: a.amount_usd,
+      amount_lamports: String(a.amount_lamports),
     }));
 
   return {
-    total_earnings_usd,
+    total_earnings_lamports,
     total_priority_dms,
     unread_message_count,
     recent_paying_audience,
@@ -178,7 +178,7 @@ export async function getAudienceDashboard(audienceId: string): Promise<Audience
     .select({
       payment_id: payments.id,
       creator_id: payments.creator_id,
-      amount_usd: payments.amount_usd,
+      amount_lamports: payments.amount_lamports,
       payment_status: payments.payment_status,
       paid_at: payments.paid_at,
       message_unlocked: payments.message_unlocked,
@@ -199,7 +199,7 @@ export async function getAudienceDashboard(audienceId: string): Promise<Audience
           username: users.username,
           display_name: users.display_name,
           profile_image_url: users.profile_image_url,
-          dm_price_usd: users.dm_price_usd,
+          dm_price_lamports: users.dm_price_lamports,
         })
         .from(users)
         .where(eq(users.id, creatorId))
@@ -217,14 +217,14 @@ export async function getAudienceDashboard(audienceId: string): Promise<Audience
       username: c!.username,
       display_name: c!.display_name,
       profile_image_url: c!.profile_image_url,
-      dm_price_usd: c!.dm_price_usd,
+      dm_price_lamports: String(c!.dm_price_lamports),
     }));
 
   const payment_history = allPayments.map((p) => ({
     payment_id: p.payment_id,
     creator_id: p.creator_id,
     creator_username: creatorMap.get(p.creator_id)?.username ?? 'unknown',
-    amount_usd: p.amount_usd,
+    amount_lamports: String(p.amount_lamports),
     payment_status: p.payment_status,
     paid_at: p.paid_at,
     message_unlocked: p.message_unlocked,

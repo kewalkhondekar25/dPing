@@ -9,15 +9,17 @@ export type PublicCreatorProfile = {
   display_name: string | null;
   bio: string | null;
   profile_image_url: string | null;
-  dm_price_usd: string;
-  // TODO [Solana]: Add wallet_address to public profile for Solana Pay QR generation
+  dm_price_lamports: string;
+  wallet_address: string | null;
 };
 
-export type SafeUser = Omit<User, 'password_hash'>;
+export type SafeUser = Omit<User, 'password_hash' | 'dm_price_lamports'> & {
+  dm_price_lamports: string;
+};
 
 function toSafeUser(user: User): SafeUser {
-  const { password_hash: _ph, ...safe } = user;
-  return safe;
+  const { password_hash: _ph, dm_price_lamports, ...safe } = user;
+  return { ...safe, dm_price_lamports: String(dm_price_lamports) };
 }
 
 function toPublicCreator(user: User): PublicCreatorProfile {
@@ -27,7 +29,8 @@ function toPublicCreator(user: User): PublicCreatorProfile {
     display_name: user.display_name,
     bio: user.bio,
     profile_image_url: user.profile_image_url,
-    dm_price_usd: user.dm_price_usd,
+    dm_price_lamports: String(user.dm_price_lamports),
+    wallet_address: user.wallet_address,
   };
 }
 
@@ -38,7 +41,7 @@ export async function getAllCreators(): Promise<PublicCreatorProfile[]> {
     .where(eq(users.role, 'creator'));
 
   return creators
-    .filter((c) => c.is_active)
+    .filter((c) => c.is_active && c.wallet_address)
     .map(toPublicCreator);
 }
 
@@ -79,7 +82,83 @@ export interface UpdateProfileInput {
   bio?: string;
   profile_image_url?: string;
   // TODO [Solana]: Add wallet_address update for Solana wallet linking
-  dm_price_usd?: string;
+  dm_price_lamports?: string;
+}
+
+export interface UpdateCreatorProfileInput {
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  profile_image_url?: string;
+  dm_price_lamports?: string;
+}
+
+export async function updateCreatorProfile(
+  userId: string,
+  userRole: string,
+  input: UpdateCreatorProfileInput,
+): Promise<SafeUser> {
+  if (userRole !== 'creator') {
+    throw new ForbiddenError('Only creators can update these profile details');
+  }
+
+  if (input.dm_price_lamports !== undefined) {
+    const lamports = BigInt(input.dm_price_lamports);
+    if (lamports < 0n) {
+      throw new ValidationError('dm_price_lamports must be a non-negative integer');
+    }
+  }
+
+  if (input.username !== undefined) {
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, input.username.toLowerCase()))
+      .limit(1);
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new ValidationError('Username is already taken');
+    }
+  }
+
+  const updateData: Partial<typeof users.$inferInsert> = {
+    updated_at: new Date(),
+  };
+
+  if (input.username !== undefined) updateData.username = input.username.toLowerCase();
+  if (input.display_name !== undefined) updateData.display_name = input.display_name;
+  if (input.bio !== undefined) updateData.bio = input.bio;
+  if (input.profile_image_url !== undefined) updateData.profile_image_url = input.profile_image_url;
+  if (input.dm_price_lamports !== undefined) updateData.dm_price_lamports = BigInt(input.dm_price_lamports);
+
+  const [updated] = await db
+    .update(users)
+    .set(updateData)
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updated) {
+    throw new NotFoundError('User');
+  }
+
+  return toSafeUser(updated);
+}
+
+export async function updateWalletAddress(userId: string, walletAddress: string): Promise<SafeUser> {
+  const [updated] = await db
+    .update(users)
+    .set({
+      wallet_address: walletAddress,
+      updated_at: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updated) {
+    throw new NotFoundError('User');
+  }
+
+  return toSafeUser(updated);
 }
 
 export async function updateCurrentUser(
@@ -87,15 +166,15 @@ export async function updateCurrentUser(
   userRole: string,
   input: UpdateProfileInput,
 ): Promise<SafeUser> {
-  // Only creators can update dm_price_usd
-  if (input.dm_price_usd !== undefined && userRole !== 'creator') {
+  // Only creators can update dm_price_lamports
+  if (input.dm_price_lamports !== undefined && userRole !== 'creator') {
     throw new ForbiddenError('Only creators can set a DM price');
   }
 
-  if (input.dm_price_usd !== undefined) {
-    const price = parseFloat(input.dm_price_usd);
-    if (isNaN(price) || price < 0) {
-      throw new ValidationError('dm_price_usd must be a non-negative number');
+  if (input.dm_price_lamports !== undefined) {
+    const lamports = BigInt(input.dm_price_lamports);
+    if (lamports < 0n) {
+      throw new ValidationError('dm_price_lamports must be a non-negative integer');
     }
   }
 
@@ -106,7 +185,7 @@ export async function updateCurrentUser(
   if (input.display_name !== undefined) updateData.display_name = input.display_name;
   if (input.bio !== undefined) updateData.bio = input.bio;
   if (input.profile_image_url !== undefined) updateData.profile_image_url = input.profile_image_url;
-  if (input.dm_price_usd !== undefined) updateData.dm_price_usd = input.dm_price_usd;
+  if (input.dm_price_lamports !== undefined) updateData.dm_price_lamports = BigInt(input.dm_price_lamports);
 
   const [updated] = await db
     .update(users)

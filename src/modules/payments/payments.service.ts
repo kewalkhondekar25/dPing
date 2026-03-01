@@ -13,8 +13,61 @@ import {
 // Mock Payment Service
 // TODO [Solana]: Replace this entire service with @solana/web3.js
 // TODO [Solana]: Verify on-chain payment via program derived address (PDA)
-// TODO [Solana]: Use USDC/SOL amount instead of USD for dm_price
 // ============================================================
+
+export interface RecordPaymentInput {
+  audience_id: string;
+  creator_id: string;
+  amount_lamports: string;
+  transaction_id: string;
+}
+
+export async function recordPayment(input: RecordPaymentInput): Promise<Payment> {
+  const { audience_id, creator_id, amount_lamports, transaction_id } = input;
+
+  const [creator] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, creator_id))
+    .limit(1);
+
+  if (!creator || creator.role !== 'creator' || !creator.is_active) {
+    throw new NotFoundError('Creator');
+  }
+
+  if (audience_id === creator_id) {
+    throw new ForbiddenError('You cannot record a payment to yourself');
+  }
+
+  // Prevent duplicate transaction_id
+  if (transaction_id) {
+    const [existingTx] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.transaction_id, transaction_id))
+      .limit(1);
+
+    if (existingTx) {
+      throw new ConflictError('A payment with this transaction_id already exists');
+    }
+  }
+
+  const newPayment: NewPayment = {
+    audience_id,
+    creator_id,
+    amount_lamports: BigInt(amount_lamports),
+    currency: 'SOL',
+    payment_method: 'solana',
+    payment_status: 'completed',
+    transaction_id,
+    message_unlocked: true,
+    paid_at: new Date(),
+  };
+
+  const [created] = await db.insert(payments).values(newPayment).returning();
+
+  return created;
+}
 
 export interface InitiatePaymentInput {
   audience_id: string;
@@ -24,7 +77,7 @@ export interface InitiatePaymentInput {
 
 export interface InitiatePaymentResult {
   payment_id: string;
-  amount_usd: string;
+  amount_lamports: string;
   creator: {
     id: string;
     username: string;
@@ -84,14 +137,14 @@ export async function initiatePayment(
     );
   }
 
-  // Lock in the creator's price at the time of initiation
-  const amount_usd = creator.dm_price_usd;
+  // Lock in the creator's price at the time of initiation (in lamports)
+  const amount_lamports = creator.dm_price_lamports;
 
   const newPayment: NewPayment = {
     audience_id,
     creator_id,
-    amount_usd,
-    currency: 'USD',
+    amount_lamports,
+    currency: 'SOL',
     payment_method: 'mock',
     payment_status: 'pending',
   };
@@ -104,7 +157,7 @@ export async function initiatePayment(
 
   return {
     payment_id: created.id,
-    amount_usd: created.amount_usd,
+    amount_lamports: String(created.amount_lamports),
     creator: {
       id: creator.id,
       username: creator.username,
@@ -145,7 +198,7 @@ export async function confirmPayment(
   // TODO [Solana]: Replace mock confirmation with on-chain verification
   // TODO [Solana]: Verify transaction signature on Solana blockchain
   // TODO [Solana]: Check that the correct amount was sent to the creator's wallet
-  // const isValid = await verifyOnChainPayment(transactionId, payment.amount_usd, payment.creator_id);
+  // const isValid = await verifyOnChainPayment(transactionId, payment.amount_lamports, payment.creator_id);
 
   const mockTransactionId =
     transactionId ||

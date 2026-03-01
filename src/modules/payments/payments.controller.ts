@@ -14,6 +14,12 @@ const confirmSchema = z.object({
   transaction_id: z.string().optional(),
 });
 
+const recordPaymentSchema = z.object({
+  creator_id: z.string().uuid('creator_id must be a valid UUID'),
+  amount_lamports: z.string().regex(/^\d+$/, 'amount_lamports must be a non-negative integer'),
+  transaction_id: z.string().min(1, 'transaction_id is required'),
+});
+
 export async function initiatePayment(
   req: Request,
   res: Response,
@@ -57,6 +63,36 @@ export async function confirmPayment(
     );
 
     sendSuccess(res, result, 200, 'Payment confirmed. DM access unlocked!');
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function recordPayment(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (req.user!.role !== 'audience') {
+      throw new ForbiddenError('Only audience members can record payments');
+    }
+
+    const input = recordPaymentSchema.parse(req.body);
+    const result = await paymentsService.recordPayment({
+      audience_id: req.user!.id,
+      creator_id: input.creator_id,
+      amount_lamports: input.amount_lamports,
+      transaction_id: input.transaction_id,
+    });
+
+    // Make the response object safe for JSON serialization by casting BigInt to string
+    const safeResult = {
+      ...result,
+      amount_lamports: String(result.amount_lamports),
+    };
+
+    sendSuccess(res, safeResult, 201, 'Payment recorded successfully!');
   } catch (err) {
     next(err);
   }

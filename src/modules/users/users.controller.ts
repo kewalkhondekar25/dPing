@@ -4,13 +4,28 @@ import * as usersService from './users.service';
 import { sendSuccess } from '../../utils/response';
 
 const updateProfileSchema = z.object({
-  display_name: z.string().min(1).max(50).optional(),
+  display_name: z.string().max(50).optional(),
   bio: z.string().max(500).optional(),
-  profile_image_url: z.string().url('Invalid URL format').optional(),
-  dm_price_usd: z
+  profile_image_url: z.union([z.literal(''), z.string().url('Invalid URL format')]).optional(),
+  dm_price_lamports: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'dm_price_usd must be a valid decimal number (e.g., "5.00")')
+    .regex(/^\d+$/, 'dm_price_lamports must be a non-negative integer (lamports)')
     .optional(),
+});
+
+const updateCreatorProfileSchema = z.object({
+  username: z.string().min(3).max(30).optional(),
+  display_name: z.string().max(50).optional(),
+  bio: z.string().max(500).optional(),
+  profile_image_url: z.union([z.literal(''), z.string().url('Invalid URL format')]).optional(),
+  dm_price_lamports: z
+    .string()
+    .regex(/^\d+$/, 'dm_price_lamports must be a non-negative integer (lamports)')
+    .optional(),
+});
+
+const updateWalletSchema = z.object({
+  wallet_address: z.union([z.literal(''), z.string().min(10, 'Invalid wallet address')]),
 });
 
 export async function getAllCreators(
@@ -54,6 +69,26 @@ export async function updateMe(req: Request, res: Response, next: NextFunction):
     const input = updateProfileSchema.parse(req.body);
     const user = await usersService.updateCurrentUser(req.user!.id, req.user!.role, input);
     sendSuccess(res, user, 200, 'Profile updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateCreatorProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = updateCreatorProfileSchema.parse(req.body);
+    const user = await usersService.updateCreatorProfile(req.user!.id, req.user!.role, input);
+    sendSuccess(res, user, 200, 'Creator profile updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateWallet(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = updateWalletSchema.parse(req.body);
+    const user = await usersService.updateWalletAddress(req.user!.id, input.wallet_address);
+    sendSuccess(res, user, 200, 'Wallet address updated successfully');
   } catch (err) {
     next(err);
   }

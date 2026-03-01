@@ -22,15 +22,17 @@ export interface LoginInput {
 }
 
 export interface AuthResult {
-  user: Omit<User, 'password_hash'>;
+  user: Omit<User, 'password_hash' | 'dm_price_lamports'> & {
+    dm_price_lamports: string;
+  };
   tokens: Tokens;
 }
 
 const SALT_ROUNDS = 12;
 
-function sanitizeUser(user: User): Omit<User, 'password_hash'> {
-  const { password_hash: _ph, ...safeUser } = user;
-  return safeUser;
+function sanitizeUser(user: User): Omit<User, 'password_hash' | 'dm_price_lamports'> & { dm_price_lamports: string } {
+  const { password_hash: _ph, dm_price_lamports, ...safeUser } = user;
+  return { ...safeUser, dm_price_lamports: String(dm_price_lamports) };
 }
 
 function buildTokenPayload(user: User): TokenPayload {
@@ -69,7 +71,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
     role,
     username: username.toLowerCase(),
     display_name: display_name || username,
-    dm_price_usd: role === 'creator' ? '5.00' : '0.00',
+    dm_price_lamports: role === 'creator' ? 5000000000n : 0n, // 5 SOL default for creators
   };
 
   const [created] = await db.insert(users).values(newUser).returning();

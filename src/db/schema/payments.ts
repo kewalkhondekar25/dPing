@@ -2,7 +2,7 @@ import {
   pgTable,
   uuid,
   text,
-  decimal,
+  bigint,
   boolean,
   timestamp,
   pgEnum,
@@ -26,10 +26,10 @@ export const payments = pgTable('payments', {
     .notNull()
     .references(() => users.id),
 
-  amount_usd: decimal('amount_usd', { precision: 10, scale: 2 }).notNull(),
+  // Amount in Solana lamports (1 SOL = 1_000_000_000 lamports)
+  amount_lamports: bigint('amount_lamports', { mode: 'bigint' }).notNull(),
 
-  // TODO [Solana]: currency will be 'SOL' or 'USDC' in Web3 phase
-  currency: text('currency').default('USD').notNull(),
+  currency: text('currency').default('SOL').notNull(),
 
   // TODO [Solana]: Replace mock payment_method with Solana native variant
   payment_method: paymentMethodEnum('payment_method').default('mock').notNull(),
