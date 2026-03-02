@@ -221,16 +221,31 @@ export async function confirmPayment(
   };
 }
 
-export async function getAudiencePayments(audienceId: string): Promise<Payment[]> {
+export async function getAudiencePayments(audienceId: string): Promise<
+  Array<
+    Payment & {
+      creator: { id: string; username: string; display_name: string | null };
+    }
+  >
+> {
   const results = await db
-    .select()
+    .select({
+      payment: payments,
+      creator: {
+        id: users.id,
+        username: users.username,
+        display_name: users.display_name,
+      },
+    })
     .from(payments)
+    .innerJoin(users, eq(payments.creator_id, users.id))
     .where(eq(payments.audience_id, audienceId))
     .orderBy(desc(payments.created_at));
     
-  return results.map((p) => ({
-    ...p,
-    amount_lamports: String(p.amount_lamports),
+  return results.map(({ payment, creator }) => ({
+    ...payment,
+    amount_lamports: String(payment.amount_lamports),
+    creator,
   })) as any;
 }
 
