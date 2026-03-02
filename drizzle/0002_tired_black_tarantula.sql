@@ -1,5 +1,3 @@
-ALTER TABLE "payments" ALTER COLUMN "currency" SET DEFAULT 'SOL';--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "dm_price_lamports" bigint DEFAULT 5000000000 NOT NULL;--> statement-breakpoint
-ALTER TABLE "payments" ADD COLUMN "amount_lamports" bigint NOT NULL;--> statement-breakpoint
-ALTER TABLE "users" DROP COLUMN "dm_price_usd";--> statement-breakpoint
-ALTER TABLE "payments" DROP COLUMN "amount_usd";
+-- Migration 0002_tired_black_tarantula
+-- NOTE: This migration's changes were moved into 0001_lamports.sql.
+-- It is intentionally left as a no-op to avoid duplicate ALTERs.
