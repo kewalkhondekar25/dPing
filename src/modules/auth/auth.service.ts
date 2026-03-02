@@ -71,7 +71,8 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
     role,
     username: username.toLowerCase(),
     display_name: display_name || username,
-    dm_price_lamports: role === 'creator' ? 5000000000n : 0n, // 5 SOL default for creators
+    // Default price for creators: 1_000_000_000 lamports
+    dm_price_lamports: role === 'creator' ? 1000000000n : 0n,
   };
 
   const [created] = await db.insert(users).values(newUser).returning();

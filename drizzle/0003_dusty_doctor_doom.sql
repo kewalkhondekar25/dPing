@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "dm_price_lamports" SET DEFAULT 0;
