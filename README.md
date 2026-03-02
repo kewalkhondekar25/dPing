@@ -1,4 +1,4 @@
-# dTopMate — Priority DMs Powered by Solana Micropayments
+# dPing — Priority DMs Powered by Solana Micropayments
 
 > **Status:** Phase 1 — Web2 Backend (Solana-ready architecture)
 > **Grant Target:** Solana Foundation India Grant — Consumer Apps & Payments/Stablecoins tracks
@@ -11,7 +11,7 @@ A decentralized creator monetization platform where audiences pay creators to un
 
 **The Problem:** Creators on social platforms are drowning in spam, bot messages, and low-quality DMs. Their attention is worth money, but there's no mechanism to enforce that.
 
-**The Solution:** dTopMate introduces a payment gate for DMs. Audience members pay a creator's set price (in USD today, USDC/SOL tomorrow) to unlock direct messaging access. Creators only see messages from people who genuinely value their time.
+**The Solution:** dPing introduces a payment gate for DMs. Audience members pay a creator's set price (in SOL) to unlock direct messaging access. Creators only see messages from people who genuinely value their time.
 
 **Why Solana?**
 - Near-zero transaction fees make micropayments ($1–$20) economically viable
@@ -49,7 +49,7 @@ A decentralized creator monetization platform where audiences pay creators to un
 
 ```bash
 git clone <repo-url>
-cd dtopmate
+cd dping
 npm install
 ```
 
@@ -99,7 +99,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "service": "dTopMate API",
+  "service": "dping API",
   "version": "1.0.0",
   "timestamp": "2024-..."
 }
@@ -135,222 +135,17 @@ All endpoints are prefixed with `/api/v1`.
 
 ---
 
-### Auth Routes — `/api/v1/auth`
+### High-Level Routes
 
-#### `POST /register`
-Register a new user.
+The backend exposes RESTful routes grouped by feature:
 
-```json
-// Request
-{
-  "email": "alice@example.com",
-  "password": "SecurePass1",
-  "username": "alice_creates",
-  "role": "creator",
-  "display_name": "Alice"
-}
+- **Auth**: registration, login, refresh, logout
+- **Users**: creator discovery and profile management
+- **Payments**: initiate and confirm DM unlock payments
+- **Messages**: send messages and fetch conversations
+- **Dashboard**: creator and audience analytics
 
-// Response 201
-{
-  "success": true,
-  "data": {
-    "user": { "id": "...", "email": "alice@example.com", "role": "creator", ... },
-    "tokens": { "access_token": "...", "refresh_token": "..." }
-  }
-}
-```
-
-**Rules:**
-- `role` is immutable after registration (prevents privilege escalation)
-- `password` requires 8+ chars, 1 uppercase, 1 number
-
-#### `POST /login`
-```json
-// Request
-{ "email": "alice@example.com", "password": "SecurePass1" }
-
-// Response 200
-{ "success": true, "data": { "user": {...}, "tokens": { "access_token": "...", "refresh_token": "..." } } }
-```
-
-#### `POST /refresh`
-```json
-// Request
-{ "refresh_token": "..." }
-
-// Response 200
-{ "success": true, "data": { "tokens": { "access_token": "...", "refresh_token": "..." } } }
-```
-
-#### `POST /logout`
-```
-Headers: Authorization: Bearer <access_token>
-```
-```json
-// Response 200
-{ "success": true, "message": "Logged out successfully" }
-```
-
----
-
-### User Routes — `/api/v1/users`
-
-#### `GET /creators` _(public)_
-List all active creators with DM prices.
-
-#### `GET /creators/:username` _(public)_
-Get a specific creator's public profile.
-
-```json
-// Response 200
-{
-  "success": true,
-  "data": {
-    "id": "...",
-    "username": "alice_creates",
-    "display_name": "Alice",
-    "bio": "Indie game developer",
-    "profile_image_url": null,
-    "dm_price_usd": "10.00"
-  }
-}
-```
-
-#### `GET /me` _(authenticated)_
-Get current user's full profile.
-
-#### `PATCH /me` _(authenticated)_
-Update profile fields.
-
-```json
-// Request (creators can also update dm_price_usd)
-{
-  "display_name": "Alice Creates",
-  "bio": "Building indie games",
-  "dm_price_usd": "15.00"
-}
-```
-
----
-
-### Payment Routes — `/api/v1/payments`
-
-#### `POST /initiate` _(audience only)_
-Initiate a payment to unlock DM access with a creator.
-
-```json
-// Request
-{ "creator_id": "<uuid>", "message_preview": "Hey, I'd love to collab!" }
-
-// Response 201
-{
-  "success": true,
-  "data": {
-    "payment_id": "<uuid>",
-    "amount_usd": "10.00",
-    "creator": { "id": "...", "username": "alice_creates", "display_name": "Alice" },
-    "mock_payment_url": "http://localhost:3000/api/v1/payments/mock-checkout/<payment_id>"
-  }
-}
-```
-
-**Business Rules:**
-- Amount locks in creator's current `dm_price_usd` at initiation time
-- Only one active payment per audience–creator pair (prevents duplicate charges)
-
-#### `POST /confirm/:payment_id` _(audience only)_
-Confirm the payment and unlock DM access.
-
-```json
-// Request
-{ "transaction_id": "optional_mock_tx_id" }
-
-// Response 200
-{
-  "success": true,
-  "data": {
-    "payment": { "id": "...", "payment_status": "completed", "message_unlocked": true, ... },
-    "dm_unlocked": true
-  }
-}
-```
-
-> **TODO [Solana]:** `transaction_id` will be a required Solana transaction signature in Phase 2.
-
-#### `GET /my-payments` _(audience only)_
-List all payments made by the authenticated audience user.
-
-#### `GET /incoming` _(creator only)_
-List all payments received, with audience user details.
-
-#### `GET /mock-checkout/:payment_id` _(public)_
-Simulates a payment gateway page. **Will be replaced by Solana Pay in Phase 2.**
-
----
-
-### Message Routes — `/api/v1/messages`
-
-#### `POST /send` _(any authenticated user)_
-Send a message. **Enforces payment gate at service layer.**
-
-```json
-// Request
-{ "receiver_id": "<uuid>", "content": "Hey Alice, love your work!" }
-
-// Response 201
-{ "success": true, "data": { "message": { "id": "...", "content": "...", "is_priority": true, ... } } }
-```
-
-**Payment gate logic:**
-- Audience → Creator: a completed payment from audience to creator must exist
-- Creator → Audience: creator can reply to any audience who paid them
-
-#### `GET /conversations` _(authenticated)_
-List all conversations grouped by the other user, with last message preview and unread count.
-
-#### `GET /conversations/:user_id` _(authenticated)_
-Get full message thread with a specific user. Returns 402 if no active payment.
-
-#### `PATCH /:message_id/read` _(authenticated)_
-Mark a message as read. Only the receiver can mark their messages as read.
-
----
-
-### Dashboard Routes — `/api/v1/dashboard`
-
-#### `GET /creator` _(creator only)_
-Comprehensive creator dashboard.
-
-```json
-// Response 200
-{
-  "success": true,
-  "data": {
-    "total_earnings_usd": "150.00",
-    "total_priority_dms": 12,
-    "unread_message_count": 3,
-    "recent_paying_audience": [
-      {
-        "audience_id": "...",
-        "username": "bob",
-        "display_name": "Bob",
-        "paid_at": "2024-01-15T10:00:00Z",
-        "amount_usd": "10.00",
-        "last_message_preview": "Hey Alice, I wanted to ask...",
-        "has_replied": false
-      }
-    ],
-    "pending_dm_requests": [
-      { "audience_id": "...", "username": "bob", "paid_at": "...", "amount_usd": "10.00" }
-    ]
-  }
-}
-```
-
-#### `GET /audience` _(audience only)_
-Audience dashboard with payment history and conversation status per creator.
-
----
+For the latest detailed endpoints and request/response shapes, refer to the source code under `src/modules/*` or your API client collection (e.g. Postman/Bruno/Insomnia).
 
 ## Architecture Decisions
 
@@ -382,7 +177,7 @@ This backend is architected to be **Solana-drop-in-ready**. Here's exactly what 
 | `payment_method` | `'mock'` | `'solana'` |
 | `currency` | `'USD'` | `'USDC'` or `'SOL'` |
 | `transaction_id` | Mock string | Solana tx signature |
-| `mock_payment_url` | localhost URL | `solana:<wallet>?amount=<n>&label=dTopMate` |
+| `mock_payment_url` | localhost URL | `solana:<wallet>?amount=<n>&label=dping` |
 | `wallet_address` | Nullable field | Required for creators |
 | Payment confirmation | Always succeeds | On-chain tx verification |
 
@@ -424,7 +219,7 @@ An Anchor smart contract will manage:
 
 **Track: Consumer Apps + Payments/Stablecoins**
 
-dTopMate directly addresses two of Solana Foundation's priority areas:
+dPing directly addresses two of Solana Foundation's priority areas:
 
 **Consumer Apps:** This is a social/creator app targeting real end-users in India and globally. The UX is entirely Web2 — users don't need to know they're using Solana. Payments "just work" and DM access "just unlocks."
 

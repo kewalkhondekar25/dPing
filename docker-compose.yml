@@ -2,11 +2,11 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: dtopmate_db
+    container_name: dping_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: dtopmate
+      POSTGRES_DB: dping
     ports:
       - "5433:5432"
     volumes:
