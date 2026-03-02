@@ -1,1 +1,27 @@
-{"version":"7","dialect":"postgresql","entries":[{"idx":0,"version":"7","when":1771443980570,"tag":"0000_little_puppet_master","breakpoints":true},{"idx":1,"version":"7","when":1738368000000,"tag":"0001_lamports","breakpoints":true}]}
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1771443980570,
+      "tag": "0000_little_puppet_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1738368000000,
+      "tag": "0001_lamports",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772483500980,
+      "tag": "0002_tired_black_tarantula",
+      "breakpoints": true
+    }
+  ]
+}

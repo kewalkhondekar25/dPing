@@ -25,7 +25,7 @@ export const users = pgTable('users', {
   wallet_address: text('wallet_address'),
 
   // DM price in Solana lamports (1 SOL = 1_000_000_000 lamports)
-  dm_price_lamports: bigint('dm_price_lamports', { mode: 'bigint' }).default(sql`5000000000`).notNull(),
+  dm_price_lamports: bigint('dm_price_lamports', { mode: 'bigint' }).default(sql`0`).notNull(),
 
   is_active: boolean('is_active').default(true).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

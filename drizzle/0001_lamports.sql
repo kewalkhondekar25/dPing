@@ -1,5 +1,5 @@
 -- Users: add dm_price_lamports (Solana lamports), migrate from dm_price_usd, drop dm_price_usd
-ALTER TABLE "users" ADD COLUMN "dm_price_lamports" bigint DEFAULT '5000000000' NOT NULL;
+ALTER TABLE "users" ADD COLUMN "dm_price_lamports" bigint DEFAULT 0 NOT NULL;
 --> statement-breakpoint
 UPDATE "users" SET "dm_price_lamports" = (ROUND("dm_price_usd"::numeric * 1000000000))::bigint WHERE "dm_price_usd" IS NOT NULL;
 --> statement-breakpoint
