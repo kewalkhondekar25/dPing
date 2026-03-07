@@ -1,8 +1,5 @@
 # dPing — Priority DMs Powered by Solana Micropayments
 
-> **Status:** Phase 1 — Web2 Backend (Solana-ready architecture)
-> **Grant Target:** Solana Foundation India Grant — Consumer Apps & Payments/Stablecoins tracks
-
 A decentralized creator monetization platform where audiences pay creators to unlock direct messaging access. Built so every creator can monetize their attention, and every message is guaranteed to be worth reading.
 
 ---
